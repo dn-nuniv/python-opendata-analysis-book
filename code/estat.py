@@ -10,12 +10,24 @@ def get_metainfo(
         version: str="3.0",
         timeout: int=10,
     ) -> Dict[str, Any]:
+    if not appId:
+        print("エラー: appId (ESTAT_APP_ID) が設定されていません。.env ファイルまたは環境変数を確認してください。")
+        return {"error": "Missing appId"}
+
     meta_url = f"https://api.e-stat.go.jp/rest/{version}/app/json/getMetaInfo"
     meta_params = {"appId": appId, "statsDataId": statsDataId}
     try:
         meta_res = requests.get(meta_url, params=meta_params, timeout=timeout)
         meta_res.raise_for_status()
-        return meta_res.json()
+        res_json = meta_res.json()
+        
+        # e-Stat APIのエラーチェック
+        if "GET_META_INFO" in res_json:
+            result = res_json["GET_META_INFO"].get("RESULT", {})
+            if result.get("STATUS") != "0":
+                print(f"e-Stat APIエラー (Status {result.get('STATUS')}): {result.get('ERROR_MSG')}")
+        
+        return res_json
     except requests.exceptions.HTTPError as e:
         print("HTTPError:", e)
         return {"error": "HTTP request failed"}
@@ -31,6 +43,10 @@ def get_statsdata(
         version: str="3.0", 
         timeout: int=60
     ) -> Dict[str, Any]:
+    if not appId:
+        print("エラー: appId (ESTAT_APP_ID) が設定されていません。.env ファイルまたは環境変数を確認してください。")
+        return {"error": "Missing appId"}
+
     if params is None:
         params = {}
     data_url = f"https://api.e-stat.go.jp/rest/{version}/app/json/getStatsData"
@@ -39,7 +55,15 @@ def get_statsdata(
     try:
         data_res = requests.get(data_url, params=data_params, timeout=timeout)
         data_res.raise_for_status()
-        return data_res.json()
+        res_json = data_res.json()
+
+        # e-Stat APIのエラーチェック
+        if "GET_STATS_DATA" in res_json:
+            result = res_json["GET_STATS_DATA"].get("RESULT", {})
+            if result.get("STATUS") != "0":
+                print(f"e-Stat APIエラー (Status {result.get('STATUS')}): {result.get('ERROR_MSG')}")
+
+        return res_json
     except requests.exceptions.HTTPError as e:
         print("HTTPError:", e)
         return {"error": "HTTP request failed"}
